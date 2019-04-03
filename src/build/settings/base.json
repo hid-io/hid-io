@@ -1,0 +1,6 @@
+{
+    "app_name": "hid-io-systray",
+    "author": "Jacob Alexander",
+    "main_module": "src/main/python/main.py",
+    "version": "0.0.1"
+}
