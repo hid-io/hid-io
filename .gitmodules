@@ -1,0 +1,3 @@
+[submodule "hid-io-core"]
+	path = hid-io-core
+	url = https://github.com/hid-io/hid-io-core.git
