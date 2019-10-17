@@ -4,9 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"pyside2" = "*"
-fbs = "*"
-pyinstaller = "==3.4"
+"pyside2" = "==5.12.3"
+fbs = "==0.8.3"
+pyinstaller = "==3.5"
 
 [dev-packages]
 
