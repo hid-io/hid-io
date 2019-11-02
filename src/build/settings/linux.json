@@ -1,6 +1,6 @@
 {
     "categories": "Utility;",
-    "description": "",
+    "description": "HID-IO Client",
     "author_email": "haata@kiibohd.com",
     "url": "https://hid-io.com"
 }
