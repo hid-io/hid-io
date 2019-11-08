@@ -34,9 +34,7 @@ from fbs_runtime.application_context import ApplicationContext
 from PySide2.QtCore import (
     QFile,
     QObject,
-    QRunnable,
     QThread,
-    QTimer,
     Signal,
     Slot,
 )
@@ -50,15 +48,8 @@ from PySide2.QtUiTools import (
 from PySide2.QtWidgets import (
     qApp,
     QAction,
-    QApplication,
-    QLabel,
-    QMainWindow,
     QMenu,
-    QMessageBox,
-    QPushButton,
     QSystemTrayIcon,
-    QVBoxLayout,
-    QWidget,
 )
 
 
@@ -190,7 +181,7 @@ class HIDIOWorker(QObject):
 
 
 class SysTrayContext(ApplicationContext, QObject):
-    def __init__(self, qapp):
+    def __init__(self):
         ApplicationContext.__init__(self)
         QObject.__init__(self)
 
@@ -412,15 +403,14 @@ def main():
     # Setup PySide2
     # Instead of using quamash (which has issues) or asyncqt
     # setup PySide2 and use a separate thread for asyncio
-    qapp = QApplication(sys.argv)
-    systray = SysTrayContext(qapp)
+    systray = SysTrayContext()
     systray.run()
 
     try:
         exit_code = 0
         while not systray.exit_app:
-            time.sleep(0.1)
-            qapp.processEvents(maxtime=100)
+            time.sleep(0.01)
+            qApp.processEvents(maxtime=10)
     except KeyboardInterrupt:
         logger.warning("Ctrl+C detected, exiting...")
         exit_code = 1
