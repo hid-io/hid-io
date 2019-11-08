@@ -23,6 +23,7 @@
 #
 import argparse
 import asyncio
+import darkdetect
 import logging
 import sys
 import time
@@ -81,25 +82,23 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
         self.parent = parent
 
 
-    def nodes_as_dicts(self):
+    def nodes_as_dicts(self, nodes):
         '''
         Returns the list of nodes as a list of dictionaries
 
         Does not include interfaces as these do not transmit over
         Signals easily
         '''
-        nodes = []
-        for node in self.nodes():
-            print(node)
-            #nodes.append({
-            #    #'type': TODO,
-            #    'name': node.name,
-            #    'serial': node.serial,
-            #})
-        print("YAR")
-        print(nodes)
+        node_dict = []
+        for node in nodes:
+            node_dict.append({
+                'type': node.type._as_str(),
+                'name': node.name,
+                'serial': node.serial,
+                'id': node.id,
+            })
 
-        return nodes
+        return node_dict
 
 
     async def on_connect(self, cap, cap_auth):
@@ -111,13 +110,20 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
                          (May be set to None, if not authenticated)
         '''
         logger.info("Connected!")
+
+        # Build list of nodes (that can be sent via Signals and Slots)
+        node_dicts = {}
+        if cap_auth:
+            node_dicts = self.nodes_as_dicts(
+                (await cap_auth.nodes().a_wait()).nodes
+            )
+
+        # Send connection information to UI
         self.parent.connected.emit(
             self.name(),
             self.version().version,
+            node_dicts,
         )
-
-        #print(self.nodes_as_dicts())
-        #print(await self.nodes())
 
 
     async def on_disconnect(self):
@@ -131,7 +137,7 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
 class HIDIOWorker(QObject):
     finished = Signal(int)
     initiated = Signal(str)
-    connected = Signal(str, str)
+    connected = Signal(str, str, list)
     disconnected = Signal()
 
     def __init__(self, parent=None):
@@ -205,12 +211,17 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_name = None
         self.core_version = None
         self.client_serial = ""
+        self.nodes = {}
 
         # Maintain object
         self.exit_app = False
 
         # Initialize systray menus
-        myicon = QPixmap(self.get_resource("systrayicon.png"))
+        icon_resource = self.get_resource("icons/White_IO-48.png")
+        if darkdetect.isLight():
+            # Show black icon when not in macOS dark mode
+            icon_resource = self.get_resource("icons/Black_IO-48.png")
+        myicon = QPixmap(icon_resource)
         self.tray = QSystemTrayIcon(QIcon(myicon), self)
 
         # Setup systray menu
@@ -280,9 +291,6 @@ class SysTrayContext(ApplicationContext, QObject):
         # TODO - Support bundle
         # TODO - Connection watcher
 
-        # Build list of devices
-        # TODO
-
         # Others menu
         self.others_menu = QMenu("Other Devices")
         # TODO - List of unsupported devices
@@ -290,6 +298,23 @@ class SysTrayContext(ApplicationContext, QObject):
         # Api usage menu
         self.api_usage_menu = QMenu("API Usage")
         # TODO - List of API
+        # Build list of devices and apis
+        for node in self.nodes:
+            if node['type'] == 'hidioApi':
+                self.api_usage_menu.addAction(
+                    "[{id}] {name} ({serial})".format(
+                        **node
+                    )
+                ).setEnabled(False)
+            if node['type'] == 'hidioDaemon':
+                self.others_menu.addAction(
+                    "[{id}] {name} ({serial})".format(
+                        **node
+                    )
+                ).setEnabled(False)
+            if node['type'] == 'usbKeyboard':
+                pass
+
 
         # Setup menu layout
         self.tray_menu.addAction(version_action)
@@ -345,13 +370,15 @@ class SysTrayContext(ApplicationContext, QObject):
 
 
     @Slot()
-    def connection(self, name, version):
+    def connection(self, name, version, nodes):
         '''
         Called when HID-IO Core connection is made
         '''
         # Set daemon version and name
         self.core_version = version
         self.core_name = name
+        self.nodes = nodes
+        print(nodes)
 
         # Update menu
         self.update_menu()
