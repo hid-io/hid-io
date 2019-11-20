@@ -48,6 +48,7 @@ from PySide2.QtUiTools import (
 from PySide2.QtWidgets import (
     qApp,
     QAction,
+    QApplication,
     QMenu,
     QSystemTrayIcon,
 )
@@ -125,10 +126,24 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
         self.parent.disconnected.emit()
 
 
+    def on_nodesupdate(self, nodes):
+        '''
+        Called whenever the list of available nodes changes
+        '''
+        logger.info("Nodes Update")
+        node_dicts = self.nodes_as_dicts(nodes)
+
+        # Send nodes information to UI
+        self.parent.nodesupdate.emit(
+            node_dicts,
+        )
+
+
 class HIDIOWorker(QObject):
     finished = Signal(int)
     initiated = Signal(str)
     connected = Signal(str, str, list)
+    nodesupdate = Signal(list)
     disconnected = Signal()
 
     def __init__(self, parent=None):
@@ -193,6 +208,7 @@ class SysTrayContext(ApplicationContext, QObject):
 
         # Signal -> Slot connections
         self.hidio_worker.connected.connect(self.connection)
+        self.hidio_worker.nodesupdate.connect(self.nodesupdate)
         self.hidio_worker.disconnected.connect(self.disconnection)
         self.hidio_worker.finished.connect(self.hidio_worker_thread.quit)
         self.hidio_worker.finished.connect(self.quit)
@@ -218,7 +234,7 @@ class SysTrayContext(ApplicationContext, QObject):
         # Setup systray menu
         self.tray_menu = QMenu()
         self.tray.setContextMenu(self.tray_menu)
-        self.core_version_action = QAction("", self)
+        self.core_version_action = QAction("Not Connected", self)
         self.core_version_action.setEnabled(False)
         self.update_menu()
 
@@ -274,7 +290,7 @@ class SysTrayContext(ApplicationContext, QObject):
                 self.core_version,
             ))
         else:
-            self.core_version_string = "Not Connected"
+            self.core_version_action.setText("Not Connected")
 
         # Tools menu
         self.tools_menu = QMenu("Tools")
@@ -369,7 +385,17 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_version = version
         self.core_name = name
         self.nodes = nodes
-        print(nodes)
+
+        # Update menu
+        self.update_menu()
+
+
+    @Slot()
+    def nodesupdate(self, nodes):
+        '''
+        Called whenever the nodes list changes
+        '''
+        self.nodes = nodes
 
         # Update menu
         self.update_menu()
@@ -405,12 +431,16 @@ def main():
     # setup PySide2 and use a separate thread for asyncio
     systray = SysTrayContext()
     systray.run()
+    qapp = qApp
+    if isinstance(qapp, type(None)):
+        # macOS fbs/PySide2 doesn't start QApplication automatically
+        qapp = QApplication([])
 
     try:
         exit_code = 0
         while not systray.exit_app:
             time.sleep(0.01)
-            qApp.processEvents(maxtime=10)
+            qapp.processEvents(maxtime=10)
     except KeyboardInterrupt:
         logger.warning("Ctrl+C detected, exiting...")
         exit_code = 1
