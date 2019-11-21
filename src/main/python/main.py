@@ -410,6 +410,9 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_version = None
         self.core_name = None
 
+        # Clear nodes list
+        self.nodes = {}
+
         # Update menu
         self.update_menu()
 
