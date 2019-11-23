@@ -21,11 +21,15 @@
 #
 # Imports
 #
+import aiofiles
 import argparse
 import asyncio
 import darkdetect
 import logging
+import logging.handlers
+import os
 import sys
+import tempfile
 import time
 
 import hidiocore.client
@@ -55,16 +59,73 @@ from PySide2.QtWidgets import (
 
 
 #
+# Variables
+#
+hidio_log_file = os.path.join(tempfile.gettempdir(), "hidio.log")
+hidio_log_level = logging.INFO
+
+# Increase verbosity
+if 'VERBOSE' in os.environ:
+    hidio_log_level = logging.DEBUG
+
+
+#
 # Logging
 #
-#logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=hidio_log_level,
+    handlers=[
+        logging.StreamHandler(),
+        logging.handlers.RotatingFileHandler(
+            hidio_log_file,
+            maxBytes=1000000,
+            backupCount=2
+        ),
+    ],
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger()
+
+loglevel_lookup = {
+    50: 'CRITICAL',
+    40: 'ERROR',
+    30: 'WARNING',
+    20: 'INFO',
+    10: 'DEBUG',
+    0: 'NOTSET',
+}
+logger.info(
+    "Opening logfile (%s) -> %s",
+    loglevel_lookup[hidio_log_level],
+    hidio_log_file
+)
+logger.info('---------------------------- hid-io starting! ----------------------------')
 
 
 #
 # Classes
 #
+class HIDIOLogHandler(logging.Handler):
+    '''
+    Internal log handler used for the log viewer updates
+    '''
+    def __init__(self, parent):
+        logging.Handler.__init__(self)
+        # Use configured log format
+        self.setFormatter(logger.handlers[0].formatter)
+        self.parent = parent
+
+
+    def emit(self, record):
+        '''
+        Append message to viewer
+        '''
+        msg = self.format(record)
+        self.parent.logmsg.emit(msg)
+
+
 class HIDIOClient(hidiocore.client.HIDIOClient):
     '''
     Callback class for HID-IO Core client library
@@ -196,6 +257,8 @@ class HIDIOWorker(QObject):
 
 
 class SysTrayContext(ApplicationContext, QObject):
+    logmsg = Signal(str)
+
     def __init__(self):
         ApplicationContext.__init__(self)
         QObject.__init__(self)
@@ -294,9 +357,18 @@ class SysTrayContext(ApplicationContext, QObject):
 
         # Tools menu
         self.tools_menu = QMenu("Tools")
-        # TODO - Log window
-        # TODO - Support bundle
-        # TODO - Connection watcher
+        diagnostics_action = QAction("Diagnostics", self)
+        diagnostics_action.triggered.connect(self.diagnostics_window_show)
+        log_action = QAction("HID-IO Log", self)
+        log_action.triggered.connect(self.log_window_show)
+        core_log_action = QAction("HID-IO Core Log", self)
+        core_log_action.triggered.connect(self.core_log_window_show)
+        support_bundle_action = QAction("Support Bundle", self)
+
+        self.tools_menu.addAction(diagnostics_action)
+        self.tools_menu.addAction(log_action)
+        self.tools_menu.addAction(core_log_action)
+        self.tools_menu.addAction(support_bundle_action)
 
         # Others menu
         self.others_menu = QMenu("Other Devices")
@@ -417,6 +489,61 @@ class SysTrayContext(ApplicationContext, QObject):
         self.update_menu()
 
 
+    @Slot()
+    def diagnostics_window_show(self):
+        '''
+        Show diagnostics dialog
+        '''
+        self.utilities_window.show()
+
+
+    @Slot()
+    def log_window_show(self):
+        '''
+        Show log window for the HID-IO Client
+        '''
+        # Setup log window
+        ui_file = QFile(self.get_resource("log_viewer.ui"))
+        ui_file.open(QFile.ReadOnly)
+        loader = QUiLoader()
+        self.log_window = loader.load(ui_file)
+        ui_file.close()
+
+        # Setup log handler
+        self.log_window.log_handler = HIDIOLogHandler(self)
+        self.logmsg.connect(self.log_window.logViewer.append)
+
+        # Write past logs to viewers
+        with open(hidio_log_file, 'r') as log:
+            self.log_window.logViewer.setPlainText(log.read()[:-1])
+
+        # Add log handler
+        logger.addHandler(self.log_window.log_handler)
+
+        self.log_window.show()
+
+        # Scroll to bottom
+        self.log_window.logViewer.verticalScrollBar().setValue(
+            self.log_window.logViewer.verticalScrollBar().maximum()
+        )
+
+
+    @Slot()
+    def core_log_window_show(self):
+        '''
+        Show log window for HID-IO Core
+        '''
+        ui_file = QFile(self.get_resource("core_log_viewer.ui"))
+        ui_file.open(QFile.ReadOnly)
+        loader = QUiLoader()
+        self.core_log_window = loader.load(ui_file)
+        ui_file.close()
+
+        # TODO Attach to log
+
+        self.core_log_window.show()
+
+
 #
 # Initialization
 #
@@ -456,4 +583,5 @@ def main():
 if __name__ == '__main__':
     exit_code = main()
     logger.info("Exiting with returncode: %s", exit_code)
+    logger.info('---------------------------- hid-io exiting! ----------------------------')
     sys.exit(exit_code)

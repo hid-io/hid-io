@@ -9,6 +9,7 @@ hidiocore = "==0.1.0b2"
 fbs = "==0.8"
 pyinstaller = "==3.5"
 darkdetect = "*"
+aiofiles = "*"
 
 [dev-packages]
 

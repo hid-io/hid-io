@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+ <author>Jacob Alexander</author>
  <class>Dialog</class>
  <widget class="QDialog" name="Dialog">
   <property name="geometry">
@@ -7,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>614</width>
-    <height>463</height>
+    <height>469</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +18,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="hostFeatureTestTab">
       <attribute name="title">
