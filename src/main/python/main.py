@@ -282,6 +282,7 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_version = None
         self.client_serial = ""
         self.nodes = {}
+        self.log_window = None
 
         # Maintain object
         self.exit_app = False
@@ -312,6 +313,10 @@ class SysTrayContext(ApplicationContext, QObject):
         # This window has to be instantiated per possible keyboard on demand
         self.cmd_prompt_ui_file = QFile(self.get_resource("hidio_utilities.ui"))
         self.cmd_prompt_ui_file.open(QFile.ReadOnly)
+
+        # Setup log handler
+        self.log_handler = HIDIOLogHandler(self)
+        logger.addHandler(self.log_handler)
 
 
     def __del__(self):
@@ -502,6 +507,10 @@ class SysTrayContext(ApplicationContext, QObject):
         '''
         Show log window for the HID-IO Client
         '''
+        # No need to show again if already visible
+        if self.log_window and self.log_window.isVisible():
+            return
+
         # Setup log window
         ui_file = QFile(self.get_resource("log_viewer.ui"))
         ui_file.open(QFile.ReadOnly)
@@ -509,18 +518,14 @@ class SysTrayContext(ApplicationContext, QObject):
         self.log_window = loader.load(ui_file)
         ui_file.close()
 
-        # Setup log handler
-        self.log_window.log_handler = HIDIOLogHandler(self)
-        self.logmsg.connect(self.log_window.logViewer.append)
-
         # Write past logs to viewers
         with open(hidio_log_file, 'r') as log:
             self.log_window.logViewer.setPlainText(log.read()[:-1])
 
-        # Add log handler
-        logger.addHandler(self.log_window.log_handler)
-
         self.log_window.show()
+
+        # Connect log handler signals
+        self.logmsg.connect(self.log_window.logViewer.append)
 
         # Scroll to bottom
         self.log_window.logViewer.verticalScrollBar().setValue(
