@@ -2,5 +2,8 @@
     "app_name": "hidio",
     "author": "Jacob Alexander",
     "main_module": "src/main/python/main.py",
-    "version": "0.0.0"
+    "version": "0.0.0",
+    "hidden_imports": [
+        "capnp"
+    ]
 }

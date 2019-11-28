@@ -4,12 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"pyside2" = "==5.13"
+"pyside2" = "==5.13.2"
 hidiocore = "==0.1.0b2"
-fbs = "==0.8"
+fbs = "==0.8.4"
 pyinstaller = "==3.5"
 darkdetect = "*"
-aiofiles = "*"
 
 [dev-packages]
 

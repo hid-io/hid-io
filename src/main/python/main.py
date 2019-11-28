@@ -21,7 +21,6 @@
 #
 # Imports
 #
-import aiofiles
 import argparse
 import asyncio
 import darkdetect
@@ -34,7 +33,7 @@ import time
 
 import hidiocore.client
 
-from fbs_runtime.application_context import ApplicationContext
+from fbs_runtime.application_context.PySide2 import ApplicationContext
 from PySide2.QtCore import (
     QFile,
     QObject,
@@ -200,15 +199,27 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
         )
 
 
+    def on_core_log_entry(self, entry):
+        '''
+        Called whenever the hid-io-core log file is updated
+        Each entry is a full line
+        '''
+        self.parent.corelogentry.emit(entry)
+
+
 class HIDIOWorker(QObject):
+    connected = Signal(str, str, list)
+    corelogentry = Signal(str)
+    disconnected = Signal()
     finished = Signal(int)
     initiated = Signal(str)
-    connected = Signal(str, str, list)
     nodesupdate = Signal(list)
-    disconnected = Signal()
 
-    def __init__(self, parent=None):
-        super(self.__class__, self).__init__(parent)
+    def __init__(self):
+        super(self.__class__, self).__init__()
+        self.client = None
+        self.tasks = None
+        logger.warning(self.parent)
 
 
     def __del__(self):
@@ -242,7 +253,7 @@ class HIDIOWorker(QObject):
         try:
             exit_code = self.loop.run_until_complete(self.async_main(self))
         except Exception as err:
-            logger.error("Async exceptionCtrl+C detected, exiting...")
+            logger.error("Async exception")
             logger.error(err)
             exit_code = 1
         self.finished.emit(exit_code)
@@ -256,8 +267,31 @@ class HIDIOWorker(QObject):
         asyncio.ensure_future(self.client.disconnect(), loop=self.loop)
 
 
+    @Slot()
+    def resetcorelogposition(self):
+        '''
+        Reset the hid-io-core log position
+        Causes the file watcher to re-send current log file contencts
+        '''
+        logger.info("YARYST")
+        #self.client.reset_corelog_followposition()
+
+
+class HIDIOWorkerThread(QThread):
+    resetcorelog = Signal()
+
+    @Slot()
+    def yay(self):
+        logger.error("YAYAAAA")
+
+        self.resetcorelog.emit()
+        print(dir(self))
+        print(self.thread)
+
+
 class SysTrayContext(ApplicationContext, QObject):
     logmsg = Signal(str)
+    resetcorelog = Signal()
 
     def __init__(self):
         ApplicationContext.__init__(self)
@@ -265,7 +299,7 @@ class SysTrayContext(ApplicationContext, QObject):
 
         # Setup HID-IO Core thread
         self.hidio_worker = HIDIOWorker()
-        self.hidio_worker_thread = QThread()
+        self.hidio_worker_thread = HIDIOWorkerThread()
         self.hidio_worker.moveToThread(self.hidio_worker_thread)
         self.hidio_worker_thread.started.connect(self.hidio_worker.start)
 
@@ -276,6 +310,9 @@ class SysTrayContext(ApplicationContext, QObject):
         self.hidio_worker.finished.connect(self.hidio_worker_thread.quit)
         self.hidio_worker.finished.connect(self.quit)
         self.hidio_worker.initiated.connect(self.initiation)
+        self.hidio_worker.corelogentry.connect(self.corelogupdate)
+        self.resetcorelog.connect(self.hidio_worker_thread.yay)
+        self.hidio_worker_thread.resetcorelog.connect(self.hidio_worker.resetcorelogposition)
 
         # Variables
         self.core_name = None
@@ -283,6 +320,7 @@ class SysTrayContext(ApplicationContext, QObject):
         self.client_serial = ""
         self.nodes = {}
         self.log_window = None
+        self.core_log_window = None
 
         # Maintain object
         self.exit_app = False
@@ -524,13 +562,13 @@ class SysTrayContext(ApplicationContext, QObject):
 
         self.log_window.show()
 
-        # Connect log handler signals
-        self.logmsg.connect(self.log_window.logViewer.append)
-
         # Scroll to bottom
         self.log_window.logViewer.verticalScrollBar().setValue(
             self.log_window.logViewer.verticalScrollBar().maximum()
         )
+
+        # Connect log handler signals
+        self.logmsg.connect(self.log_window.logViewer.append)
 
 
     @Slot()
@@ -544,9 +582,27 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_log_window = loader.load(ui_file)
         ui_file.close()
 
-        # TODO Attach to log
+        # Reset core log position
+        self.resetcorelog.emit()
 
         self.core_log_window.show()
+
+        # Scroll to bottom
+        self.core_log_window.logViewer.verticalScrollBar().setValue(
+            self.core_log_window.logViewer.verticalScrollBar().maximum()
+        )
+
+
+    @Slot()
+    def corelogupdate(self, entry):
+        '''
+        Add entry to the hid-io core log viewer
+        '''
+        # Don't send if the window doesn't exist
+        if not self.core_log_window:
+            return
+
+        self.core_log_window.logViewer.append(entry[:-1])
 
 
 #
