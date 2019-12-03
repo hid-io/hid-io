@@ -2,5 +2,8 @@
     "categories": "Utility;",
     "description": "HID-IO Client",
     "author_email": "haata@kiibohd.com",
-    "url": "https://hid-io.com"
+    "url": "https://hid-io.com",
+    "hidden_imports": [
+        "PySide2.QtXml"
+    ]
 }

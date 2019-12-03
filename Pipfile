@@ -5,12 +5,14 @@ name = "pypi"
 
 [packages]
 "pyside2" = "==5.13.2"
-hidiocore = "==0.1.0b2"
+hidiocore = "==0.1.0b3"
 fbs = "==0.8.4"
 pyinstaller = "==3.5"
 darkdetect = "*"
 
 [dev-packages]
+pipfile-requirements = "*"
+rsa = "*"
 
 [requires]
 python_version = "3.7"

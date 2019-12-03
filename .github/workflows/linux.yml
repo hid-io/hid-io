@@ -1,0 +1,36 @@
+name: Linux
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+        # pycapnp-async currently requires 3.7+
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Freeze build
+      run: |
+        fbs freeze --debug
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude benchmark
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude benchmark
+    - name: Run tests
+      run: |
+        fbs test
