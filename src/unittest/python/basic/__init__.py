@@ -24,8 +24,8 @@ import unittest
 # Increase verbosity for import
 os.environ['VERBOSE'] = 'true'
 
-import hidiocore.client
-import main
+import hidiocore.client # noqa
+import main # noqa
 
 
 #

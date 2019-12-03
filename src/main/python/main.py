@@ -18,7 +18,6 @@
 #
 import argparse
 import asyncio
-import darkdetect
 import logging
 import logging.handlers
 import os
@@ -26,6 +25,7 @@ import sys
 import tempfile
 import time
 
+import darkdetect
 import hidiocore.client
 
 from fbs_runtime.application_context.PySide2 import ApplicationContext
@@ -66,7 +66,6 @@ if 'VERBOSE' in os.environ:
 #
 # Logging
 #
-
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=hidio_log_level,
@@ -111,7 +110,6 @@ class HIDIOLogHandler(logging.Handler):
         self.setFormatter(logger.handlers[0].formatter)
         self.parent = parent
 
-
     def emit(self, record):
         '''
         Append message to viewer
@@ -127,7 +125,6 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
     def __init__(self, parent=None):
         hidiocore.client.HIDIOClient.__init__(self, 'HID-IO Client')
         self.parent = parent
-
 
     def nodes_as_dicts(self, nodes):
         '''
@@ -146,7 +143,6 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
             })
 
         return node_dict
-
 
     async def on_connect(self, cap, cap_auth):
         '''
@@ -172,14 +168,12 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
             node_dicts,
         )
 
-
     async def on_disconnect(self):
         '''
         Called whenever the connection to HID-IO Core is broken
         '''
         logger.info("Disconnected!")
         self.parent.disconnected.emit()
-
 
     def on_nodesupdate(self, nodes):
         '''
@@ -192,7 +186,6 @@ class HIDIOClient(hidiocore.client.HIDIOClient):
         self.parent.nodesupdate.emit(
             node_dicts,
         )
-
 
     def on_core_log_entry(self, entry):
         '''
@@ -216,13 +209,11 @@ class HIDIOWorker(QObject):
         self.tasks = None
         logger.warning(self.parent)
 
-
     def __del__(self):
         '''
         Thread clean on object removal
         '''
         self.stop()
-
 
     async def async_main(self, parent):
         '''
@@ -243,7 +234,6 @@ class HIDIOWorker(QObject):
         while self.client.retry_connection_status():
             await asyncio.sleep(0.01)
 
-
     @Slot()
     def start(self):
         '''
@@ -258,14 +248,12 @@ class HIDIOWorker(QObject):
             exit_code = 1
         self.finished.emit(exit_code)
 
-
     @Slot()
     def stop(self):
         '''
         Manually stop thread
         '''
         asyncio.ensure_future(self.client.disconnect(), loop=self.loop)
-
 
     @Slot()
     def resetcorelogposition(self):
@@ -356,7 +344,6 @@ class SysTrayContext(ApplicationContext, QObject):
         self.log_handler = HIDIOLogHandler(self)
         logger.addHandler(self.log_handler)
 
-
     def __del__(self):
         # Close cmd prompt ui file
         self.cmd_prompt_ui_file.close()
@@ -364,7 +351,6 @@ class SysTrayContext(ApplicationContext, QObject):
         # Cleanup
         ApplicationContext.__del__(self)
         QObject.__del__(self)
-
 
     def update_menu(self):
         '''
@@ -437,7 +423,6 @@ class SysTrayContext(ApplicationContext, QObject):
             if node['type'] == 'usbKeyboard':
                 pass
 
-
         # Setup menu layout
         self.tray_menu.addAction(version_action)
         self.tray_menu.addAction(self.core_version_action)
@@ -448,7 +433,6 @@ class SysTrayContext(ApplicationContext, QObject):
         self.tray_menu.addMenu(self.tools_menu)
         self.tray_menu.addAction(quit_action)
 
-
     def run(self):
         '''
         Show systray icon
@@ -456,7 +440,6 @@ class SysTrayContext(ApplicationContext, QObject):
         self.hidio_worker_thread.start()
         self.tray.show()
         logger.debug("Ready!")
-
 
     @Slot()
     def stop_hidio(self):
@@ -466,7 +449,6 @@ class SysTrayContext(ApplicationContext, QObject):
         logger.debug("stop_hidio initiated")
         self.hidio_worker.stop()
         logger.debug("stop_hidio finished")
-
 
     @Slot()
     def quit(self):
@@ -478,7 +460,6 @@ class SysTrayContext(ApplicationContext, QObject):
         logger.debug("quit initiated")
         self.exit_app = True
 
-
     @Slot()
     def initiation(self, client_serial):
         '''
@@ -489,7 +470,6 @@ class SysTrayContext(ApplicationContext, QObject):
 
         # Update menu
         self.update_menu()
-
 
     @Slot()
     def connection(self, name, version, nodes):
@@ -504,7 +484,6 @@ class SysTrayContext(ApplicationContext, QObject):
         # Update menu
         self.update_menu()
 
-
     @Slot()
     def nodesupdate(self, nodes):
         '''
@@ -514,7 +493,6 @@ class SysTrayContext(ApplicationContext, QObject):
 
         # Update menu
         self.update_menu()
-
 
     @Slot()
     def disconnection(self):
@@ -531,14 +509,12 @@ class SysTrayContext(ApplicationContext, QObject):
         # Update menu
         self.update_menu()
 
-
     @Slot()
     def diagnostics_window_show(self):
         '''
         Show diagnostics dialog
         '''
         self.utilities_window.show()
-
 
     @Slot()
     def log_window_show(self):
@@ -570,7 +546,6 @@ class SysTrayContext(ApplicationContext, QObject):
         # Connect log handler signals
         self.logmsg.connect(self.log_window.logViewer.append)
 
-
     @Slot()
     def core_log_window_show(self):
         '''
@@ -591,7 +566,6 @@ class SysTrayContext(ApplicationContext, QObject):
         self.core_log_window.logViewer.verticalScrollBar().setValue(
             self.core_log_window.logViewer.verticalScrollBar().maximum()
         )
-
 
     @Slot()
     def corelogupdate(self, entry):
