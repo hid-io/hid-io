@@ -28,6 +28,7 @@ import shutil
 
 import fbs.builtin_commands
 import fbs.cmdline
+import fbs_runtime.platform
 
 
 #
@@ -46,7 +47,12 @@ def dircopy(srcdir):
     '''
     Copies srcdir into freeze_dir of the project
     '''
+    # Lookup freeze directory
     freezedir = path('${freeze_dir}')
+    # Handle macOS builds
+    if fbs_runtime.platform.is_mac():
+        freezedir = os.path.join(freezedir, 'Contents', 'MacOS')
+
     dstdir = os.path.join(freezedir, os.path.basename(srcdir))
     if os.path.exists(dstdir):
         shutil.rmtree(dstdir)
