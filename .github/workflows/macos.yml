@@ -22,13 +22,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python -m pip install cython
+        python -m pip install -r requirements.txt
     - name: Freeze build
       run: |
         python fbs_hidio.py freeze --debug
     - name: Lint with flake8
       run: |
-        pip install flake8
+        python -m pip install flake8
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude benchmark,target
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude benchmark,target
     - name: Run tests
