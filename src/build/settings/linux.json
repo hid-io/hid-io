@@ -7,8 +7,5 @@
         "PySide2.QtXml"
     ],
     "gpg_key": "CB3B8BE01E94B436F9AE571162589389B931C363",
-    "gpg_name": "Jacob Alexander",
-    "public_settings": [
-        "licensing_pubkey"
-    ]
+    "gpg_name": "Jacob Alexander"
 }
